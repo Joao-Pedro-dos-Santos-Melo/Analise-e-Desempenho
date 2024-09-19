@@ -39,19 +39,20 @@ void inicia_little(little *n)
     n->tempo_anterior = 0.0;
 }
 
-void calcula_particao(double t_chegada, double ocupacao, double en, double ew, double erroL)
+void calcula_particao(double t_chegada, double ocupacao, double en, double ew, double erroL, double lambda)
 {
     printf("Tempo de chegada: %d\n", (int)t_chegada);
     printf("Ocupacao: %f\n", ocupacao);
     printf("E[N]: %f\n", en);
     printf("E[W]: %f\n", ew);
-    printf("Erro de Little: %f\n", erroL);
+    printf("lambda: %lF\n", lambda);
+    printf("Erro de Little: %.20lF\n", erroL);
     printf("-------------------------------------------\n");
 }
 
 int main()
 {
-    srand(1);
+    srand(9);
     double parametro_chegada;
     printf("Informe o tempo médio entre as chegadas (s): ");
     scanf("%lF", &parametro_chegada);
@@ -99,89 +100,105 @@ int main()
     double ocupacao;
 
     // Abrir um arquivo para escrita
-    // FILE *file = fopen("simulacao.csv", "w");
+    FILE *file = fopen("simulacao85.csv", "w");
 
-    // if (file == NULL) {
-    //     perror("Erro ao abrir o arquivo");
-    //     return 1;
-    // }
+    if (file == NULL) {
+        perror("Erro ao abrir o arquivo");
+        return 1;
+    }
 
-    // fprintf(file, "Tempo;Ocupação;E[N];E[W];Erro Little\n");
+    fprintf(file, "Tempo;Ocupação;E[N];E[W];Erro Little\n");
 
 
 
     while (tempo_decorrido <= tempo_simulacao)
     {
+
         tempo_decorrido = min(min(tempo_chegada, tempo_saida), tempo_particao);
 
 
         if (tempo_decorrido == tempo_particao)
         {
+            //atuaiza area
+            en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
+            en.tempo_anterior = tempo_decorrido;
+
+            ew_chegadas.soma_areas += (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
+            ew_chegadas.tempo_anterior = tempo_decorrido;
+
+            ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
+            ew_saidas.tempo_anterior = tempo_decorrido;
+
+            //calcula os parametros
             en_final = en.soma_areas / tempo_decorrido;
             ew_final = (ew_chegadas.soma_areas - ew_saidas.soma_areas) / ew_chegadas.num_eventos;
             lambda = ew_chegadas.num_eventos / tempo_decorrido;
             erroLittle = en_final - lambda * ew_final;
             ocupacao = soma_ocupacao / tempo_decorrido;
-            calcula_particao(tempo_decorrido , ocupacao, en_final, ew_final, erroLittle);
-            //fprintf(file, "%.6f;%.6f;%.6f;%.6f;%.6f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle);
+            calcula_particao(tempo_decorrido , ocupacao, en_final, ew_final, erroLittle, lambda);
+            fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle);
             tempo_particao += 100;
+        }
+        else if (tempo_decorrido == tempo_chegada)
+        {
+            // sistema esta ocioso?
+            if (!fila)
+            {
+                tempo_saida = tempo_decorrido + gera_tempo(parametro_saida);
+
+                soma_ocupacao += tempo_saida - tempo_decorrido;
+            }
+            fila++;
+            fila_max = fila > fila_max ? fila : fila_max;
+
+            tempo_chegada = tempo_decorrido + gera_tempo(parametro_chegada);
+
+            /**
+             * little
+             */
+            en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
+            en.num_eventos++;
+            en.tempo_anterior = tempo_decorrido;
+
+            ew_chegadas.soma_areas += (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
+            ew_chegadas.num_eventos++;
+            ew_chegadas.tempo_anterior = tempo_decorrido;
         }
         else
         {
-            // chegada
-            if (tempo_decorrido == tempo_chegada)
+            fila--;
+            tempo_saida = DBL_MAX;
+            // tem mais requisicoes na fila?
+            if (fila)
             {
-                // sistema esta ocioso?
-                if (!fila)
-                {
-                    tempo_saida = tempo_decorrido + gera_tempo(parametro_saida);
+                tempo_saida = tempo_decorrido + gera_tempo(parametro_saida);
 
-                    soma_ocupacao += tempo_saida - tempo_decorrido;
-                }
-                fila++;
-                fila_max = fila > fila_max ? fila : fila_max;
-
-                tempo_chegada = tempo_decorrido + gera_tempo(parametro_chegada);
-
-                /**
-                 * little
-                 */
-                en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
-                en.num_eventos++;
-                en.tempo_anterior = tempo_decorrido;
-
-                ew_chegadas.soma_areas += (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
-                ew_chegadas.num_eventos++;
-                ew_chegadas.tempo_anterior = tempo_decorrido;
+                soma_ocupacao += tempo_saida - tempo_decorrido;
             }
-            else
-            {
-                fila--;
-                tempo_saida = DBL_MAX;
-                // tem mais requisicoes na fila?
-                if (fila)
-                {
-                    tempo_saida = tempo_decorrido + gera_tempo(parametro_saida);
 
-                    soma_ocupacao += tempo_saida - tempo_decorrido;
-                }
+            /**
+             * little
+             */
+            en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
+            en.num_eventos--;
+            en.tempo_anterior = tempo_decorrido;
 
-                /**
-                 * little
-                 */
-                en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
-                en.num_eventos--;
-                en.tempo_anterior = tempo_decorrido;
-
-                ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
-                ew_saidas.num_eventos++;
-                ew_saidas.tempo_anterior = tempo_decorrido;
-            }
+            ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
+            ew_saidas.num_eventos++;
+            ew_saidas.tempo_anterior = tempo_decorrido;
         }
+        
     }
 
-    ew_chegadas.soma_areas +=(tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
+    printf("EW chegada soma da area: %lF\n", (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos);
+    printf("EW saida soma da aread: %lF\n", (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos);
+
+    ew_chegadas.soma_areas += (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
     ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
+
+    printf("EW chegada num evetos: %ld\n", ew_chegadas.num_eventos);
+    printf("EW saida num eventos: %ld\n", ew_saidas.num_eventos);
+    printf("tempo: %lF\n", tempo_decorrido);
 
 
     ocupacao = soma_ocupacao / tempo_decorrido;
@@ -194,11 +211,12 @@ int main()
     printf("Ocupacao: %lF\n", ocupacao);
     printf("E[N]: %lF\n", en_final);
     printf("E[W]: %lF\n", ew_final);
-    printf("Erro de Little: %lF\n", erroLittle);
+    printf("lambda: %lF\n", lambda);
+    printf("Erro de Little: %.20lF\n", erroLittle);
 
-    //fprintf(file, "%.6f;%.6f;%.6f;%.6f;%.6f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle);
+    fprintf(file, "%.2f;%.6f;%.6f;%.6f;%.20f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle);
     // Fechar o arquivo
-    //fclose(file);
+    fclose(file);
 
     return 0;
 }
