@@ -39,7 +39,7 @@ void inicia_little(little *n)
     n->tempo_anterior = 0.0;
 }
 
-void calcula_particao(double t_chegada, double ocupacao, double en, double ew, double erroL, double lambda)
+void printa_particao(double t_chegada, double ocupacao, double en, double ew, double erroL, double lambda)
 {
     printf("Tempo de chegada: %d\n", (int)t_chegada);
     printf("Ocupacao: %f\n", ocupacao);
@@ -52,7 +52,7 @@ void calcula_particao(double t_chegada, double ocupacao, double en, double ew, d
 
 int main()
 {
-    srand(9);
+    srand(6);
     double parametro_chegada;
     printf("Informe o tempo médio entre as chegadas (s): ");
     scanf("%lF", &parametro_chegada);
@@ -88,11 +88,10 @@ int main()
     inicia_little(&ew_chegadas);
     inicia_little(&ew_saidas);
 
-    // variaveis teste
-    double antigo_tempo_saida;
-    double antigo_tempo_chegada;
+    // variavel da partição
     double tempo_particao = 100;
 
+    // variaveis dos parametros
     double en_final;
     double ew_final;
     double lambda;
@@ -100,26 +99,27 @@ int main()
     double ocupacao;
 
     // Abrir um arquivo para escrita
-    FILE *file = fopen("simulacao85.csv", "w");
+    FILE *file = fopen("simulacao99.csv", "w");
 
     if (file == NULL) {
         perror("Erro ao abrir o arquivo");
         return 1;
     }
 
-    fprintf(file, "Tempo;Ocupação;E[N];E[W];Erro Little\n");
+    // Cabeçalho do arquivo
+    fprintf(file, "Tempo;Ocupação;E[N];E[W];Erro Little;Lambda\n");
 
 
-
+    // Simulação
     while (tempo_decorrido <= tempo_simulacao)
     {
-
+        // Pega o tempo do proximo evento
         tempo_decorrido = min(min(tempo_chegada, tempo_saida), tempo_particao);
 
 
-        if (tempo_decorrido == tempo_particao)
+        if (tempo_decorrido == tempo_particao) // Evento captura de dados
         {
-            //atuaiza area
+            // Atuaiza area no momento da partição
             en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
             en.tempo_anterior = tempo_decorrido;
 
@@ -129,17 +129,23 @@ int main()
             ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
             ew_saidas.tempo_anterior = tempo_decorrido;
 
-            //calcula os parametros
+            //calcula os parametros da partiçaõ
             en_final = en.soma_areas / tempo_decorrido;
             ew_final = (ew_chegadas.soma_areas - ew_saidas.soma_areas) / ew_chegadas.num_eventos;
             lambda = ew_chegadas.num_eventos / tempo_decorrido;
             erroLittle = en_final - lambda * ew_final;
             ocupacao = soma_ocupacao / tempo_decorrido;
-            calcula_particao(tempo_decorrido , ocupacao, en_final, ew_final, erroLittle, lambda);
-            fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle);
+
+            // Printa os resultado da atuais da partição
+            printa_particao(tempo_decorrido , ocupacao, en_final, ew_final, erroLittle, lambda);
+
+            // Salva no arquivo os resultados da partição
+            fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f;%.6f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle, lambda);
+
+            // Define o tempo da nova partição
             tempo_particao += 100;
         }
-        else if (tempo_decorrido == tempo_chegada)
+        else if (tempo_decorrido == tempo_chegada) //Evento de chegada
         {
             // sistema esta ocioso?
             if (!fila)
@@ -164,7 +170,7 @@ int main()
             ew_chegadas.num_eventos++;
             ew_chegadas.tempo_anterior = tempo_decorrido;
         }
-        else
+        else // Evento de Saida
         {
             fila--;
             tempo_saida = DBL_MAX;
@@ -190,23 +196,18 @@ int main()
         
     }
 
-    printf("EW chegada soma da area: %lF\n", (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos);
-    printf("EW saida soma da aread: %lF\n", (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos);
-
+    //Calculos das areas que pode ter faltado
     ew_chegadas.soma_areas += (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
     ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
 
-    printf("EW chegada num evetos: %ld\n", ew_chegadas.num_eventos);
-    printf("EW saida num eventos: %ld\n", ew_saidas.num_eventos);
-    printf("tempo: %lF\n", tempo_decorrido);
-
-
+    //Calculos das parametros finais
     ocupacao = soma_ocupacao / tempo_decorrido;
     en_final = en.soma_areas / tempo_decorrido;
     ew_final = (ew_chegadas.soma_areas - ew_saidas.soma_areas) / ew_chegadas.num_eventos;
     lambda = ew_chegadas.num_eventos / tempo_decorrido;
     erroLittle = en_final - lambda * ew_final;
     
+    // Printa os resultado finais
     printf("Maior tamanho de fila alcancado: %ld\n", fila_max);
     printf("Ocupacao: %lF\n", ocupacao);
     printf("E[N]: %lF\n", en_final);
@@ -214,7 +215,8 @@ int main()
     printf("lambda: %lF\n", lambda);
     printf("Erro de Little: %.20lF\n", erroLittle);
 
-    fprintf(file, "%.2f;%.6f;%.6f;%.6f;%.20f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle);
+    // Salva os resultados finais no arquivo
+    fprintf(file, "%.2f;%.6f;%.6f;%.6f;%.20f;%.6f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle, lambda);
     // Fechar o arquivo
     fclose(file);
 
