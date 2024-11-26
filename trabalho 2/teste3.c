@@ -58,43 +58,17 @@ void preenche_link(int tamanho_link, int quant_pacotes, unsigned long int *fila,
 
 int main(){
 
-    srand(1);
-
-    // int vetor[1000];
-
-    // int soma = 0;
-
-    // printf("\n");
-    // for(int i = 0; i < 1000; i++){
-    //     vetor[i] = (int) gera_tempo(1.0/100);
-    //     printf("%d ", vetor[i]);
-    //     soma = soma + vetor[i];
-    // }
-    // printf("\n");
-    // printf("Soma total: %d\n", soma);
-    // printf("Media: %d\n", soma/1000);
-
-    // for(int i = 0; i < 20; i++){
-    //     printf("%d ", tamanho_pacote());
-    // }
-    // printf("\n");
-    // printf("%d", 44100/60);
-    // printf("\n");
-    // printf("%f", 44100.0/60);
-
     printf("\n");
 
-    unsigned long int fila = 0;
-    int primeiro = 0;
-    int tamanho_do_link = 120000;
-    int quat = 30;
+    int x = 5;
+    int y = 3;
 
-    preenche_link(tamanho_do_link, quat, &fila, &primeiro);
+    double r1 = (double)x / y;
+    double r2 = (double)x / (double)y;
 
-    printf("tamanho da fila atua: %ld\n", fila);
-    printf("novo primeiro da fila: %d\n", primeiro);
+    printf("resulta 1: %f\n", r1);
+    printf("resulta 2: %f\n", r2);
 
     
-    printf("\n");
     return 0;
 }
