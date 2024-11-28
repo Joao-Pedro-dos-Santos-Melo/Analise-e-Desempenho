@@ -72,9 +72,9 @@ double tempo_do_pacote (int pacote, int tamanho_link){
 int main()
 {
     srand(1);
-    int ocupacaoD;
+    double ocupacaoD;
     printf("Informe a Ocupação desejada: ");
-    scanf("%d", &ocupacaoD);
+    scanf("%lf", &ocupacaoD);
 
 
     double tempo_simulacao;
@@ -82,7 +82,9 @@ int main()
     scanf("%lF", &tempo_simulacao);
 
     // 50 * 550 + 40 * 40 + 10 * 1500 = 44100
-    int tamanho_do_link = 44100 / ocupacaoD;
+    int tamanho_do_link = 44100 / (ocupacaoD * 0.01);
+    printf("tamanho do link : %d\n", tamanho_do_link);
+    printf("-----------------------------------------\n");
 
     double parametro_gera_pacote = 1.0/100;
     int quantidade_de_pacotes = (int) gera_tempo(parametro_gera_pacote);
@@ -167,11 +169,11 @@ int main()
             // Define o tempo da nova partição
             tempo_particao += 100;
         }
-        else if (tempo_decorrido == tempo_chegada) //Evento de chegada
+        if (tempo_decorrido == tempo_chegada) //Evento de chegada
         {
             quantidade_de_pacotes = (int) gera_tempo(parametro_gera_pacote);
             // sistema esta ocioso?
-            if (!fila)
+            if (!fila && (quantidade_de_pacotes != 0))
             {
                 pacote = gera_pacote();
                 tempo_saida = tempo_decorrido + tempo_do_pacote(pacote, tamanho_do_link);
@@ -232,6 +234,8 @@ int main()
     erroLittle = en_final - lambda * ew_final;
     
     // Printa os resultado finais
+    printf("EW chegadas: %ld\n", ew_chegadas.num_eventos);
+     printf("EW saidas: %ld\n", ew_saidas.num_eventos);
     printf("Fila final: %ld\n", fila);
     printf("Maior tamanho de fila alcancado: %ld\n", fila_max);
     printf("Ocupacao: %lF\n", ocupacao);
