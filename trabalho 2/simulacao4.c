@@ -81,15 +81,28 @@ int main()
     printf("Informe o tempo de simulacao (s): ");
     scanf("%lF", &tempo_simulacao);
 
-    // 50 * 550 + 40 * 40 + 10 * 1500 = 44100
-    double tamanho_do_link = 44100.0 / (ocupacaoD * 0.01);
+    // 50 * 550 + 40 * 40 + 10 * 1500 = 44100 -> pacotes normais
+    // 64000 -> pacotes da video chamada
+    // Como vai ter em media duas chamadas ao mesmo tempo, a quantidade de Bytes por segundo vai ser:
+    // 64000 + 64000 + 44100 = 172100
+    double tamanho_do_link = 172100.0 / (ocupacaoD * 0.01);
     printf("tamanho do link : %lF\n", tamanho_do_link);
     printf("-----------------------------------------\n");
 
     double parametro_gera_pacote = 100.0;
 
+    double parametro_chegada_chamada = 1.0/30.0;
+    double parametro_duracao_chamada = 1.0/60.0;
+
+    // 1 seg passa 50 pacotes, se em 1 seg passa 64000 Bytes da chamada, entao 1 pacote da chamada tem 64000/50 = 1280 Bytes
+    double tamanho_pacote_chamada = 1280;
+    double tempo_pacote_chamada = 0.02;
+    double tempo_saida_pacote_chamada = DBL_MAX;
+    double tempo_chegada_pacote_chamada = DBL_MAX;
+
     //tempo que o primeiro pacote chegara no sistema
     double tempo_chegada = gera_tempo(parametro_gera_pacote);
+    double tempo_chegada_chamada = gera_tempo(parametro_chegada_chamada);
 
     double tempo_decorrido = 0.0;
 
@@ -138,7 +151,7 @@ int main()
     while (tempo_decorrido <= tempo_simulacao)
     {
         // Pega o tempo do proximo evento
-        tempo_decorrido = min(min(tempo_chegada, tempo_saida), tempo_particao);
+        tempo_decorrido = min(min(min(tempo_chegada, tempo_saida), tempo_particao), tempo_chegada_chamada);
 
 
         if (tempo_decorrido == tempo_particao) // Evento captura de dados
@@ -172,6 +185,12 @@ int main()
 
             // Define o tempo da nova partição
             tempo_particao += 100.0;
+        } else if(tempo_decorrido == tempo_chegada_chamada){ //Evento Chegada Chamada
+            tempo_chegada_chamada = tempo_decorrido + gera_tempo(parametro_chegada_chamada);
+
+            tempo_chegada_pacote_chamada = tempo_decorrido + tempo_pacote_chamada;
+
+
         } else if (tempo_decorrido == tempo_chegada) //Evento de chegada
         {
             // printf("tempo chegada: %lF\n", tempo_chegada);

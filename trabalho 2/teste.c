@@ -28,7 +28,7 @@ int main(){
 
     printf("\n");
     for(int i = 0; i < 100; i++){
-        vetor[i] = gera_tempo(1.0/100);
+        vetor[i] = gera_tempo(1.0/60);
         printf("%f ", vetor[i]);
         soma = soma + vetor[i];
     }
