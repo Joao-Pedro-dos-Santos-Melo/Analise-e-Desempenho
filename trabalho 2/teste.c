@@ -22,18 +22,9 @@ int main(){
 
     srand(2);
 
-    double vetor[100];
-
-    double soma = 0;
-
-    printf("\n");
-    for(int i = 0; i < 100; i++){
-        vetor[i] = gera_tempo(1.0/60);
-        printf("%f ", vetor[i]);
-        soma = soma + vetor[i];
-    }
-    printf("\n");
-    printf("Soma total: %f\n", soma);
-    printf("Media: %f\n", soma/100);
+    double link = 2 * 64000.0 + 44100.0;
+    printf("tamanho do link : %f\n", link);
+    double tempo = 1280.0 / link;
+    printf("tempo da mensagens passa pelo link: %f\n", tempo);
     return 0;
 }
