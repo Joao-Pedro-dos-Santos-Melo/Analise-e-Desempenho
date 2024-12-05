@@ -21,6 +21,7 @@ typedef struct
 
 typedef struct
 {
+    double tamanho;
     double tempo_saida;
 } pacote;
 
@@ -58,6 +59,32 @@ void adicionarNoFinal(Node** head, chamada c) {
     }
 }
 
+void moverPrimeiraChamdaParaUltima(Node** head) {
+    if (*head == NULL || (*head)->next == NULL) {
+        return;
+    }
+
+    Node* temp = *head;
+    *head = (*head)->next;
+    temp->next = NULL;
+
+    Node* current = *head;
+    while (current->next != NULL) {
+        current = current->next;
+    }
+    current->next = temp;
+}
+
+void removerPrimeiraChamada(Node** head) {
+    if (*head == NULL) {
+        return;
+    }
+
+    Node* temp = *head;
+    *head = (*head)->next;
+    free(temp);
+}
+
 // Funções para manipular a lista de pacotes
 NodePacote* criarNoPacote(pacote p) {
     NodePacote* novoNo = (NodePacote*)malloc(sizeof(NodePacote));
@@ -77,6 +104,18 @@ void adicionarNoFinalPacote(NodePacote** head, pacote p) {
         }
         temp->next = novoNo;
     }
+}
+
+void saiPacote(NodePacote** head) {
+    if (*head == NULL) {
+        printf("A lista já está vazia.\n");
+        return;
+    }
+
+    NodePacote* temp = *head; // Apontar para o nó atual (primeiro)
+    *head = (*head)->next;   // Ajustar o ponteiro da lista para o próximo nó
+    free(temp);              // Liberar memória do nó antigo
+    //printf("Primeiro pacote removido.\n");
 }
 
 double uniforme()
@@ -107,7 +146,7 @@ void inicia_little(little *n)
     n->tempo_anterior = 0.0;
 }
 
-void printa_particao(double t_chegada, double ocupacao, double en, double ew, double erroL, double lambda)
+void printa_particao(double t_chegada, double ocupacao, double en, double ew, double erroL, double lambda, double en_final_chamada, double ew_final_chamada, double erroLittle_chamada)
 {
     printf("Tempo de chegada: %d\n", (int)t_chegada);
     printf("Ocupacao: %f\n", ocupacao);
@@ -115,6 +154,10 @@ void printa_particao(double t_chegada, double ocupacao, double en, double ew, do
     printf("E[W]: %f\n", ew);
     printf("lambda: %lF\n", lambda);
     printf("Erro de Little: %.20lF\n", erroL);
+    printf("E[N] Chamada: %lF\n", en_final_chamada);
+    printf("E[W] Chamada: %lF\n", ew_final_chamada);
+    //printf("lambda Chamada: %lF\n", lambda_chamada);
+    printf("Erro de Little Chamada: %.20lF\n", erroLittle_chamada);
     printf("-------------------------------------------\n");
 }
 
@@ -211,9 +254,14 @@ int main()
     double lambda;
     double erroLittle;
     double ocupacao;
+    // variaveis dos parametros das chamada
+    double en_final_chamada;
+    double ew_final_chamada;
+    double lambda_chamada;
+    double erroLittle_chamada;
 
     // Abrir um arquivo para escrita
-    FILE *file = fopen("simulacao99.csv", "w");
+    FILE *file = fopen("simulacao-4-60.csv", "w");
 
     if (file == NULL) {
         perror("Erro ao abrir o arquivo");
@@ -221,35 +269,36 @@ int main()
     }
 
     // Cabeçalho do arquivo
-    fprintf(file, "Tempo;Ocupação;E[N];E[W];Erro Little;Lambda\n");
+    fprintf(file, "Tempo;Ocupação;E[N];E[W];Erro Little;Lambda;E[N] Chamada;E[W] Chamada;Erro Little Chamada\n");
 
 
     double p;
-    double tempo_saida_chamda;
+    double tempo_saida_chamada;
     double tempo_chegada_pacote_chamada;
-    double tempo_saida_pacote_chamada;
+    //double tempo_saida_pacote_chamada;
+    //double tempo_saida_ultimo_pacote;
 
     // Simulação
     while (tempo_decorrido <= tempo_simulacao)
     {
         
         if(chamadas == NULL){ //setando os dados da chamada
-            tempo_saida_chamda = DBL_MAX;
+            tempo_saida_chamada = DBL_MAX;
             tempo_chegada_pacote_chamada = DBL_MAX;
         }else{
-            tempo_saida_chamda = chamadas->data.tempo_saida;
+            tempo_saida_chamada = chamadas->data.tempo_saida;
             tempo_chegada_pacote_chamada = chamadas->data.tempo_chegada_pacote; 
         }
-        if(pacotes == NULL){ // setando os dados do pacote
-            tempo_saida_pacote_chamada = DBL_MAX;
-        }else{
-            tempo_saida_pacote_chamada = pacotes->data.tempo_saida;
-        }
+        // if(pacotes == NULL){ // setando os dados do pacote
+        //     tempo_saida_pacote_chamada = DBL_MAX;
+        // }else{
+        //     tempo_saida_pacote_chamada = pacotes->data.tempo_saida;
+        // }
 
         
         // Pega o tempo do proximo evento
-        tempo_decorrido = min(min(min(min(min(min(tempo_chegada, tempo_saida), tempo_particao), 
-        tempo_chegada_chamada), tempo_saida_chamda), tempo_chegada_pacote_chamada), tempo_saida_pacote_chamada);
+        tempo_decorrido = min(min(min(min(min(tempo_chegada, tempo_saida), tempo_particao), 
+        tempo_chegada_chamada), tempo_chegada_pacote_chamada), tempo_saida_chamada);
 
 
         if (tempo_decorrido == tempo_particao) // Evento captura de dados
@@ -268,6 +317,16 @@ int main()
             ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
             ew_saidas.tempo_anterior = tempo_decorrido;
 
+            // Atualiza area no momento da partição so das chamadas
+            en_chamada.soma_areas += (tempo_decorrido - en_chamada.tempo_anterior) * en_chamada.num_eventos;
+            en_chamada.tempo_anterior = tempo_decorrido;
+
+            ew_chamada_chegadas.soma_areas += (tempo_decorrido - ew_chamada_chegadas.tempo_anterior) * ew_chamada_chegadas.num_eventos;
+            ew_chamada_chegadas.tempo_anterior = tempo_decorrido;
+
+            ew_chamada_saidas.soma_areas += (tempo_decorrido - ew_chamada_saidas.tempo_anterior) * ew_chamada_saidas.num_eventos;
+            ew_chamada_saidas.tempo_anterior = tempo_decorrido;
+
             //calcula os parametros da partiçaõ
             en_final = en.soma_areas / tempo_decorrido;
             ew_final = (ew_chegadas.soma_areas - ew_saidas.soma_areas) / ew_chegadas.num_eventos;
@@ -275,11 +334,19 @@ int main()
             erroLittle = en_final - lambda * ew_final;
             ocupacao = soma_ocupacao / tempo_decorrido;
 
+            //calcula os parametros da partiçaõ da chamada
+            en_final_chamada = en_chamada.soma_areas / tempo_decorrido;
+            ew_final_chamada = (ew_chamada_chegadas.soma_areas - ew_chamada_saidas.soma_areas) / ew_chamada_chegadas.num_eventos;
+            lambda_chamada = ew_chamada_chegadas.num_eventos / tempo_decorrido;
+            erroLittle_chamada = en_final_chamada - lambda_chamada * ew_final_chamada;
+
+
+
             // Printa os resultado da atuais da partição
-            printa_particao(tempo_decorrido , ocupacao, en_final, ew_final, erroLittle, lambda);
+            printa_particao(tempo_decorrido , ocupacao, en_final, ew_final, erroLittle, lambda, en_final_chamada, ew_final_chamada, erroLittle_chamada);
 
             // Salva no arquivo os resultados da partição
-            fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f;%.6f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle, lambda);
+            fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f;%.6f;%.6f;%.6f;%.20f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle, lambda, en_final_chamada, ew_final_chamada, erroLittle_chamada);
 
             // Define o tempo da nova partição
             tempo_particao += 100.0;
@@ -292,23 +359,25 @@ int main()
 
             adicionarNoFinal(&chamadas, nova);
 
-            
-
             tempo_chegada_chamada = tempo_decorrido + gera_tempo(parametro_chegada_chamada);
 
 
         } else if (tempo_decorrido == tempo_chegada) //Evento de chegada de pacote web
         {
-
+            pacote n;
+            n.tamanho = gera_pacote();
+            n.tempo_saida = DBL_MAX;
             tempo_chegada = tempo_decorrido + gera_tempo(parametro_gera_pacote);
             // sistema esta ocioso?
-            if (!fila)
+            if (pacotes == NULL)
             {
-                p = gera_pacote();
-                tempo_saida = tempo_decorrido + tempo_do_pacote(p, tamanho_do_link);
-
+                tempo_saida = tempo_decorrido + tempo_do_pacote(n.tamanho, tamanho_do_link);
+                n.tempo_saida = tempo_saida;
+                
                 soma_ocupacao += tempo_saida - tempo_decorrido;
             }
+            adicionarNoFinalPacote(&pacotes, n);
+    
             fila++;
             fila_max = fila > fila_max ? fila : fila_max;
 
@@ -325,18 +394,24 @@ int main()
 
         }else if(tempo_decorrido == tempo_chegada_pacote_chamada){ // Evento de chagada de pacote da chamada
 
-           
-
             chamadas->data.tempo_chegada_pacote = tempo_decorrido + tempo_pacote_chamada;
+
+            pacote n;
+            n.tamanho = tamanho_pacote_chamada;
+            n.tempo_saida = DBL_MAX;
             // sistema esta ocioso?
-            if (!fila)
+            if (pacotes == NULL)
             {
-                pacote n;
-                n.tempo_saida = tempo_decorrido + tempo_do_pacote(tamanho_pacote_chamada, tamanho_do_link);
-                adicionarNoFinalPacote(&pacotes, n);
+                tempo_saida = tempo_decorrido + tempo_do_pacote(tamanho_pacote_chamada, tamanho_do_link);
+                n.tempo_saida = tempo_saida;
+
+                
 
                 soma_ocupacao += n.tempo_saida - tempo_decorrido;
             }
+            adicionarNoFinalPacote(&pacotes, n);
+            moverPrimeiraChamdaParaUltima(&chamadas);
+
             fila++;
             fila_max = fila > fila_max ? fila : fila_max;
 
@@ -360,16 +435,28 @@ int main()
             ew_chamada_chegadas.num_eventos++;
             ew_chamada_chegadas.tempo_anterior = tempo_decorrido;
         }
-        else if(tempo_decorrido == tempo_saida) // Evento de Saida pacote web
+        else if(tempo_decorrido == tempo_saida) // Evento de Saida pacote 
         {
 
             fila--;
+
+            if(pacotes->data.tamanho == tamanho_pacote_chamada){ // Erro de Little so da chamada
+                en_chamada.soma_areas += (tempo_decorrido - en_chamada.tempo_anterior) * en_chamada.num_eventos;
+                en_chamada.num_eventos--;
+                en_chamada.tempo_anterior = tempo_decorrido;
+
+                ew_chamada_saidas.soma_areas += (tempo_decorrido - ew_chamada_saidas.tempo_anterior) * ew_chamada_saidas.num_eventos;
+                ew_chamada_saidas.num_eventos++;
+                ew_chamada_saidas.tempo_anterior = tempo_decorrido;
+            }
+            saiPacote(&pacotes);
             tempo_saida = DBL_MAX;
             // tem mais requisicoes na fila?
-            if (fila)
+            if (pacotes != NULL)
             {
-                p = gera_pacote();
-                tempo_saida = tempo_decorrido + tempo_do_pacote(p, tamanho_do_link);
+
+                tempo_saida = tempo_decorrido + tempo_do_pacote(pacotes->data.tamanho, tamanho_do_link);
+                pacotes->data.tempo_saida = tempo_saida;
 
                 soma_ocupacao += tempo_saida - tempo_decorrido;
             }
@@ -385,37 +472,16 @@ int main()
             ew_saidas.num_eventos++;
             ew_saidas.tempo_anterior = tempo_decorrido;
 
-        }else if(tempo_decorrido == tempo_saida_pacote_chamada){ // Evento de saida de pacote chamada
-            fila--;
-
-            
-
-            /**
-             * little
-             */
-            en.soma_areas += (tempo_decorrido - en.tempo_anterior) * en.num_eventos;
-            en.num_eventos--;
-            en.tempo_anterior = tempo_decorrido;
-
-            ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
-            ew_saidas.num_eventos++;
-            ew_saidas.tempo_anterior = tempo_decorrido;
-
-            //little chamada
-            en_chamada.soma_areas += (tempo_decorrido - en_chamada.tempo_anterior) * en_chamada.num_eventos;
-            en_chamada.num_eventos--;
-            en_chamada.tempo_anterior = tempo_decorrido;
-
-            ew_chamada_saidas.soma_areas += (tempo_decorrido - ew_chamada_saidas.tempo_anterior) * ew_chamada_saidas.num_eventos;
-            ew_chamada_saidas.num_eventos++;
-            ew_chamada_saidas.tempo_anterior = tempo_decorrido;
-
+        }else{ // Evento Saida da Chamada
+            removerPrimeiraChamada(&chamadas);
         }
     }
 
     //Calculos das areas que pode ter faltado
     ew_chegadas.soma_areas += (tempo_decorrido - ew_chegadas.tempo_anterior) * ew_chegadas.num_eventos;
     ew_saidas.soma_areas += (tempo_decorrido - ew_saidas.tempo_anterior) * ew_saidas.num_eventos;
+    ew_chamada_chegadas.soma_areas += (tempo_decorrido - ew_chamada_chegadas.tempo_anterior) * ew_chamada_chegadas.num_eventos;
+    ew_chamada_saidas.soma_areas += (tempo_decorrido - ew_chamada_saidas.tempo_anterior) * ew_chamada_saidas.num_eventos;
 
     //Calculos das parametros finais
     ocupacao = soma_ocupacao / tempo_decorrido;
@@ -423,10 +489,18 @@ int main()
     ew_final = (ew_chegadas.soma_areas - ew_saidas.soma_areas) / ew_chegadas.num_eventos;
     lambda = ew_chegadas.num_eventos / tempo_decorrido;
     erroLittle = en_final - lambda * ew_final;
+
+    en_final_chamada = en_chamada.soma_areas / tempo_decorrido;
+    ew_final_chamada = (ew_chamada_chegadas.soma_areas - ew_chamada_saidas.soma_areas) / ew_chamada_chegadas.num_eventos;
+    lambda_chamada = ew_chamada_chegadas.num_eventos / tempo_decorrido;
+    erroLittle_chamada = en_final_chamada - lambda_chamada * ew_final_chamada;
+    
     
     // Printa os resultado finais
     printf("EW chegadas: %ld\n", ew_chegadas.num_eventos);
-     printf("EW saidas: %ld\n", ew_saidas.num_eventos);
+    printf("EW saidas: %ld\n", ew_saidas.num_eventos);
+    printf("EW chegadas chamada: %ld\n", ew_chamada_chegadas.num_eventos);
+    printf("EW saidas chamada: %ld\n", ew_chamada_saidas.num_eventos);
     printf("Fila final: %ld\n", fila);
     printf("Maior tamanho de fila alcancado: %ld\n", fila_max);
     printf("Ocupacao: %lF\n", ocupacao);
@@ -434,9 +508,13 @@ int main()
     printf("E[W]: %lF\n", ew_final);
     printf("lambda: %lF\n", lambda);
     printf("Erro de Little: %.20lF\n", erroLittle);
+    printf("E[N] Chamada: %lF\n", en_final_chamada);
+    printf("E[W] Chamada: %lF\n", ew_final_chamada);
+    printf("lambda Chamada: %lF\n", lambda_chamada);
+    printf("Erro de Little Chamada: %.20lF\n", erroLittle_chamada);
 
     // Salva os resultados finais no arquivo
-    fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f;%.6f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle, lambda);
+    fprintf(file, "%.f;%.6f;%.6f;%.6f;%.20f;%.6f;%.6f;%.6f;%.20f\n", tempo_decorrido, ocupacao, en_final, ew_final, erroLittle, lambda, en_final_chamada, ew_final_chamada, erroLittle_chamada);
     // Fechar o arquivo
     fclose(file);
 
